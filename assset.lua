@@ -1,5 +1,5 @@
 --=============================================================================
---  ASSET ID TRACKER  •  CLICK-TO-INSPECT EDITION
+--  ASSET ID TRACKER  •  RAYCAST CLICK-INSPECT EDITION
 --=============================================================================
 local Players          = game:GetService("Players")
 local StarterGui       = game:GetService("StarterGui")
@@ -130,7 +130,7 @@ create("TextLabel", {
 create("TextLabel", {
     Position=UDim2.fromOffset(48,25), Size=UDim2.new(1,-160,0,14),
     BackgroundTransparency=1, Font=FONT,
-    Text="Click items in-game to scan  •  v3.0", TextSize=11,
+    Text="Click items in-game to scan  •  v3.1", TextSize=11,
     TextColor3=THEME.SubText, TextXAlignment=Enum.TextXAlignment.Left,
 }, header)
 
@@ -633,7 +633,7 @@ searchBox:GetPropertyChangedSignal("Text"):Connect(function()
 end)
 
 --=============================================================================
---  CLICK TO INSPECT LOGIC (The Fix)
+--  RAYCAST CLICK-INSPECT LOGIC (The Fix for Higher Tier Eggs)
 --=============================================================================
 local function collectFrom(inst, out)
     local props = ASSET_PROPS[inst.ClassName]
@@ -687,7 +687,6 @@ local function processFound(foundList)
     end
 end
 
--- The Tool that allows you to click items
 local inspectorTool = Instance.new("Tool")
 inspectorTool.Name = "🔍 Inspector"
 inspectorTool.RequiresHandle = false
@@ -707,24 +706,48 @@ inspectorTool.Unequipped:Connect(function()
 end)
 
 inspectorTool.Activated:Connect(function()
-    local target = mouse.Target
+    -- Create custom raycast parameters to hit non-collidable parts (like floating eggs)
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Exclude
+    
+    local excludeList = {}
+    if LP.Character then
+        table.insert(excludeList, LP.Character)
+    end
+    rayParams.FilterDescendantsInstances = excludeList
+    rayParams.RespectCanCollide = false -- THIS is the magic that hits non-collidable eggs!
+    
+    -- Fire ray from mouse
+    local rayResult = workspace:Raycast(mouse.UnitRay.Origin, mouse.UnitRay.Direction.Unit * 1000, rayParams)
+    
+    local target = nil
+    if rayResult then
+        target = rayResult.Instance
+    else
+        target = mouse.Target -- Fallback
+    end
+    
     if not target then return end
     
-    if CONFIG.IgnoreOwnCharacter then
-        local char = LP.Character
-        if char and target:IsDescendantOf(char) then return end
-    end
-
     local found = {}
-    -- Scan the clicked part
-    collectFrom(target, found)
-    
-    -- If it's a model/folder, scan inside it too
-    local ok, desc = pcall(function() return target:GetDescendants() end)
-    if ok and desc then
-        for i = 1, #desc do
-            collectFrom(desc[i], found)
+    -- Helper to scan object and its children
+    local function scanObj(obj)
+        if not obj then return end
+        collectFrom(obj, found)
+        local ok, desc = pcall(function() return obj:GetDescendants() end)
+        if ok and desc then
+            for i = 1, #desc do
+                collectFrom(desc[i], found)
+            end
         end
+    end
+    
+    -- 1. Scan the exact part we clicked
+    scanObj(target)
+    
+    -- 2. Scan the parent Model/Folder in case the mesh is a sibling
+    if target.Parent and (target.Parent:IsA("Model") or target.Parent:IsA("Folder")) then
+        scanObj(target.Parent)
     end
 
     if #found > 0 then
@@ -732,7 +755,7 @@ inspectorTool.Activated:Connect(function()
         updateStats()
         highlightInstance(target, CONFIG.HighlightDuration)
         notify("🔍 Assets Found", "Found " .. #found .. " assets on " .. target.Name, 3)
-        setUIVisible(true) -- Open the UI automatically when you find something
+        setUIVisible(true)
     else
         notify("No Assets", "No asset IDs found on " .. target.Name, 3)
     end
@@ -822,4 +845,4 @@ updateStats()
 applyFilter()
 
 notify("Tracker Loaded", "Equip the 🔍 Inspector tool to start clicking items!", 5)
-print("[AssetTracker v3.0 Click Edition] loaded — Equip tool and click items!")
+print("[AssetTracker v3.1 Raycast Edition] loaded — Can now click non-collidable eggs!")
