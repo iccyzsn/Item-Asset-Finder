@@ -1,5 +1,5 @@
 --=============================================================================
---  ASSET ID TRACKER  •  RAYCAST CLICK-INSPECT EDITION
+--  ASSET ID TRACKER  •  RADIUS SCAN EDITION
 --=============================================================================
 local Players          = game:GetService("Players")
 local StarterGui       = game:GetService("StarterGui")
@@ -130,7 +130,7 @@ create("TextLabel", {
 create("TextLabel", {
     Position=UDim2.fromOffset(48,25), Size=UDim2.new(1,-160,0,14),
     BackgroundTransparency=1, Font=FONT,
-    Text="Click items in-game to scan  •  v3.1", TextSize=11,
+    Text="Click items in-game to scan  •  v3.2", TextSize=11,
     TextColor3=THEME.SubText, TextXAlignment=Enum.TextXAlignment.Left,
 }, header)
 
@@ -633,7 +633,7 @@ searchBox:GetPropertyChangedSignal("Text"):Connect(function()
 end)
 
 --=============================================================================
---  RAYCAST CLICK-INSPECT LOGIC (The Fix for Higher Tier Eggs)
+--  RAYCAST + RADIUS SCAN LOGIC
 --=============================================================================
 local function collectFrom(inst, out)
     local props = ASSET_PROPS[inst.ClassName]
@@ -706,30 +706,20 @@ inspectorTool.Unequipped:Connect(function()
 end)
 
 inspectorTool.Activated:Connect(function()
-    -- Create custom raycast parameters to hit non-collidable parts (like floating eggs)
+    -- Create custom raycast parameters to hit non-collidable parts
     local rayParams = RaycastParams.new()
     rayParams.FilterType = Enum.RaycastFilterType.Exclude
-    
     local excludeList = {}
-    if LP.Character then
-        table.insert(excludeList, LP.Character)
-    end
+    if LP.Character then table.insert(excludeList, LP.Character) end
     rayParams.FilterDescendantsInstances = excludeList
-    rayParams.RespectCanCollide = false -- THIS is the magic that hits non-collidable eggs!
+    rayParams.RespectCanCollide = false
     
-    -- Fire ray from mouse
     local rayResult = workspace:Raycast(mouse.UnitRay.Origin, mouse.UnitRay.Direction.Unit * 1000, rayParams)
-    
-    local target = nil
-    if rayResult then
-        target = rayResult.Instance
-    else
-        target = mouse.Target -- Fallback
-    end
-    
+    local target = rayResult and rayResult.Instance or mouse.Target
     if not target then return end
     
     local found = {}
+    
     -- Helper to scan object and its children
     local function scanObj(obj)
         if not obj then return end
@@ -742,22 +732,39 @@ inspectorTool.Activated:Connect(function()
         end
     end
     
-    -- 1. Scan the exact part we clicked
+    -- 1. Scan the exact part we clicked and its parent Model
     scanObj(target)
-    
-    -- 2. Scan the parent Model/Folder in case the mesh is a sibling
     if target.Parent and (target.Parent:IsA("Model") or target.Parent:IsA("Folder")) then
         scanObj(target.Parent)
+    end
+
+    -- 2. THE FIX: Radius Scan Fallback
+    -- If we didn't find the ID on the clicked part, scan EVERYTHING within 15 studs of the mouse.
+    -- This catches invisible hitboxes that sit on top of the Blackhole Egg.
+    if #found == 0 and rayResult then
+        local overlapParams = OverlapParams.new()
+        overlapParams.FilterType = Enum.RaycastFilterType.Exclude
+        overlapParams.FilterDescendantsInstances = excludeList
+        
+        -- Get all parts in a 15-stud box around where we clicked
+        local partsInBox = workspace:GetPartBoundsInBox(CFrame.new(rayResult.Position), Vector3.new(15, 15, 15), overlapParams)
+        for _, part in ipairs(partsInBox) do
+            scanObj(part)
+            -- Also scan the parent of that part just in case
+            if part.Parent and (part.Parent:IsA("Model") or part.Parent:IsA("Folder")) then
+                scanObj(part.Parent)
+            end
+        end
     end
 
     if #found > 0 then
         processFound(found)
         updateStats()
         highlightInstance(target, CONFIG.HighlightDuration)
-        notify("🔍 Assets Found", "Found " .. #found .. " assets on " .. target.Name, 3)
+        notify("🔍 Assets Found", "Found " .. #found .. " assets near click point.", 3)
         setUIVisible(true)
     else
-        notify("No Assets", "No asset IDs found on " .. target.Name, 3)
+        notify("No Assets", "No asset IDs found near " .. target.Name, 3)
     end
 end)
 
@@ -845,4 +852,4 @@ updateStats()
 applyFilter()
 
 notify("Tracker Loaded", "Equip the 🔍 Inspector tool to start clicking items!", 5)
-print("[AssetTracker v3.1 Raycast Edition] loaded — Can now click non-collidable eggs!")
+print("[AssetTracker v3.2 Radius Edition] loaded — Now scanning invisible hitboxes!")
