@@ -1,5 +1,5 @@
 --=============================================================================
---  ASSET ID TRACKER  •  RADIUS SCAN EDITION (MOBILE OPTIMIZED)
+--  ASSET ID TRACKER  •  RADIUS SCAN EDITION
 --=============================================================================
 local Players          = game:GetService("Players")
 local StarterGui       = game:GetService("StarterGui")
@@ -9,7 +9,6 @@ local HttpService      = game:GetService("HttpService")
 
 local LP = Players.LocalPlayer
 local mouse = LP:GetMouse()
-local camera = Workspace.CurrentCamera
 
 local CONFIG = {
     MaxEntries          = 100,
@@ -75,10 +74,10 @@ local screen = create("ScreenGui", {
 }, resolveGuiParent())
 
 --=============================================================================
---  FLOATING TOGGLE (Mobile-Friendly Left Center)
+--  FLOATING TOGGLE
 --=============================================================================
 local toggleBtn = create("TextButton", {
-    Name="ToggleBtn", Position=UDim2.new(0, 15, 0.5, 0),
+    Name="ToggleBtn", Position=UDim2.new(0,24,0,120),
     Size=UDim2.fromOffset(52,52), BackgroundColor3=THEME.Panel,
     BorderSizePixel=0, AutoButtonColor=false, Font=FONT, Text="🔍",
     TextSize=22, TextColor3=THEME.Text, ZIndex=20,
@@ -96,15 +95,12 @@ toggleBtn.MouseLeave:Connect(function()
 end)
 
 --=============================================================================
---  MAIN WINDOW (Responsive Scaling)
+--  MAIN WINDOW
 --=============================================================================
 local main = create("Frame", {
-    Name="Window", 
-    Position=UDim2.new(0.5, 0, 0.5, 0), 
-    Size=UDim2.new(0.9, 0, 0.85, 0), -- Scales dynamically with mobile screen
-    BackgroundColor3=THEME.Bg,
+    Name="Window", Position=UDim2.fromOffset(90,80),
+    Size=UDim2.fromOffset(500,500), BackgroundColor3=THEME.Bg,
     BorderSizePixel=0, ClipsDescendants=true, Visible=false,
-    AnchorPoint = Vector2.new(0.5, 0.5)
 }, screen)
 corner(12, main)
 stroke(THEME.Stroke, 1, 0, main)
@@ -134,14 +130,14 @@ create("TextLabel", {
 create("TextLabel", {
     Position=UDim2.fromOffset(48,25), Size=UDim2.new(1,-160,0,14),
     BackgroundTransparency=1, Font=FONT,
-    Text="Tap items in-game to scan  •  v3.2M", TextSize=11,
+    Text="Click items in-game to scan  •  v3.2", TextSize=11,
     TextColor3=THEME.SubText, TextXAlignment=Enum.TextXAlignment.Left,
 }, header)
 
 local function headerButton(text, x, color)
     local b = create("TextButton", {
         AnchorPoint=Vector2.new(1,0.5), Position=UDim2.new(1,x,0,23),
-        Size=UDim2.fromOffset(32,32), BackgroundColor3=THEME.PanelAlt, -- Slightly larger for touch
+        Size=UDim2.fromOffset(28,28), BackgroundColor3=THEME.PanelAlt,
         BorderSizePixel=0, AutoButtonColor=false, Font=FONT_BOLD,
         Text=text, TextSize=14, TextColor3=color or THEME.SubText,
     }, header)
@@ -151,14 +147,14 @@ local function headerButton(text, x, color)
     return b
 end
 local minimizeBtn = headerButton("—", -12, THEME.Text)
-local closeBtn    = headerButton("✕", -48, THEME.DANGER)
+local closeBtn    = headerButton("✕", -46, THEME.DANGER)
 
 local toolbar = create("Frame", {
     Position=UDim2.new(0,0,0,46), Size=UDim2.new(1,0,0,42), BackgroundTransparency=1,
 }, main)
 
 local searchBox = create("TextBox", {
-    Position=UDim2.fromOffset(10,9), Size=UDim2.new(1,-90,0,30), -- Height & width adjusted for mobile
+    Position=UDim2.fromOffset(10,9), Size=UDim2.new(1,-230,0,26),
     BackgroundColor3=THEME.Panel, BorderSizePixel=0, Font=FONT,
     PlaceholderText="🔎  Search name, ID, class, path...",
     PlaceholderColor3=THEME.SubText, TextColor3=THEME.Text, TextSize=12,
@@ -176,8 +172,8 @@ end)
 
 local function toolButton(text, x, base, tc)
     local b = create("TextButton", {
-        AnchorPoint=Vector2.new(1,0.5), Position=UDim2.new(1,x,0,24),
-        Size=UDim2.fromOffset(36,30), BackgroundColor3=base, -- Larger touch zone
+        AnchorPoint=Vector2.new(1,0.5), Position=UDim2.new(1,x,0,22),
+        Size=UDim2.fromOffset(32,26), BackgroundColor3=base,
         BorderSizePixel=0, AutoButtonColor=false, Font=FONT,
         Text=text, TextSize=14, TextColor3=tc or THEME.Text,
     }, toolbar)
@@ -189,7 +185,7 @@ local function toolButton(text, x, base, tc)
 end
 
 local clearBtn = toolButton("🗑", -10,  THEME.Panel)
-local sendBtn  = toolButton("📤", -52, THEME.PanelAlt, THEME.SubText)
+local sendBtn  = toolButton("📤", -48, THEME.PanelAlt, THEME.SubText)
 
 local statsBar = create("Frame", {
     Position=UDim2.new(0,0,0,88), Size=UDim2.new(1,0,0,20), BackgroundTransparency=1,
@@ -229,7 +225,7 @@ local statusLabel = create("TextLabel", {
 create("TextLabel", {
     AnchorPoint=Vector2.new(1,0), Position=UDim2.new(1,-12,0,0),
     Size=UDim2.new(0.6,0,1,0), BackgroundTransparency=1, Font=FONT,
-    Text="Tap Toggle to hide  •  Equip Tool & Tap item", -- Mobile friendly footer text
+    Text="RightShift = hide  •  Equip Tool & Click item",
     TextSize=10, TextColor3=THEME.SubText, TextXAlignment=Enum.TextXAlignment.Right,
 }, footer)
 
@@ -637,7 +633,7 @@ searchBox:GetPropertyChangedSignal("Text"):Connect(function()
 end)
 
 --=============================================================================
---  RAYCAST + RADIUS SCAN LOGIC (MOBILE OPTIMIZED)
+--  RAYCAST + RADIUS SCAN LOGIC
 --=============================================================================
 local function collectFrom(inst, out)
     local props = ASSET_PROPS[inst.ClassName]
@@ -718,16 +714,13 @@ inspectorTool.Activated:Connect(function()
     rayParams.FilterDescendantsInstances = excludeList
     rayParams.RespectCanCollide = false
     
-    -- Mobile-friendly tap raycasting using exact screen position
-    local mousePos = UserInputService:GetMouseLocation()
-    local unitRay = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
-    local rayResult = workspace:Raycast(unitRay.Origin, unitRay.Direction.Unit * 1000, rayParams)
-    
+    local rayResult = workspace:Raycast(mouse.UnitRay.Origin, mouse.UnitRay.Direction.Unit * 1000, rayParams)
     local target = rayResult and rayResult.Instance or mouse.Target
     if not target then return end
     
     local found = {}
     
+    -- Helper to scan object and its children
     local function scanObj(obj)
         if not obj then return end
         collectFrom(obj, found)
@@ -746,14 +739,18 @@ inspectorTool.Activated:Connect(function()
     end
 
     -- 2. THE FIX: Radius Scan Fallback
+    -- If we didn't find the ID on the clicked part, scan EVERYTHING within 15 studs of the mouse.
+    -- This catches invisible hitboxes that sit on top of the Blackhole Egg.
     if #found == 0 and rayResult then
         local overlapParams = OverlapParams.new()
         overlapParams.FilterType = Enum.RaycastFilterType.Exclude
         overlapParams.FilterDescendantsInstances = excludeList
         
+        -- Get all parts in a 15-stud box around where we clicked
         local partsInBox = workspace:GetPartBoundsInBox(CFrame.new(rayResult.Position), Vector3.new(15, 15, 15), overlapParams)
         for _, part in ipairs(partsInBox) do
             scanObj(part)
+            -- Also scan the parent of that part just in case
             if part.Parent and (part.Parent:IsA("Model") or part.Parent:IsA("Folder")) then
                 scanObj(part.Parent)
             end
@@ -778,12 +775,13 @@ local uiVisible = false
 local function setUIVisible(state)
     uiVisible = state
     if state then
-        main.Position = UDim2.new(0.5, 0, 0.5, 0) -- Recenter on open for mobile
+        main.Position = UDim2.fromOffset(toggleBtn.AbsolutePosition.X, toggleBtn.AbsolutePosition.Y)
         main.Visible = true
         toggleBtn.Visible = false
     else
-        toggleBtn.Visible = true
+        toggleBtn.Position = UDim2.fromOffset(main.AbsolutePosition.X, main.AbsolutePosition.Y)
         main.Visible = false
+        toggleBtn.Visible = true
     end
 end
 toggleBtn.Activated:Connect(function() setUIVisible(true) end)
@@ -807,7 +805,7 @@ end)
 
 sendBtn.Activated:Connect(function()
     if not selectedRecord then
-        notify("⚠️ No selection", "Tap an entry first, then hit 📤.")
+        notify("⚠️ No selection", "Click an entry first, then hit 📤.")
         return
     end
     local d = selectedRecord.data
@@ -853,5 +851,5 @@ updateSendButton()
 updateStats()
 applyFilter()
 
-notify("Tracker Loaded", "Equip the 🔍 Inspector tool to start tapping items!", 5)
-print("[AssetTracker v3.2 Mobile Edition] loaded — Touch raycasting enabled!")
+notify("Tracker Loaded", "Equip the 🔍 Inspector tool to start clicking items!", 5)
+print("[AssetTracker v3.2 Radius Edition] loaded — Now scanning invisible hitboxes!")
